@@ -46,14 +46,14 @@ const Dashboard: React.FC = () => {
   const totalLeads = leads.length;
   const messagesSent = leads.reduce((acc, lead) => {
     let count = 0;
-    if (lead.dm_1_status === 'sent') count++;
-    if (lead.dm_2_status === 'sent') count++;
-    if (lead.dm_3_status === 'sent') count++;
+    if (lead.dm_1sent) count++;
+    if (lead.dm_2) count++;
+    if (lead.dm_3) count++;
     return acc + count;
   }, 0);
   
   const totalReplied = leads.filter(lead => 
-    lead.dm_1_status === 'sent' || lead.dm_2_status === 'sent' || lead.dm_3_status === 'sent'
+    lead.dm_1sent || lead.dm_2 || lead.dm_3
   ).length;
   
   const meetingsBooked = leads.filter(lead => lead.booked_meeting).length;

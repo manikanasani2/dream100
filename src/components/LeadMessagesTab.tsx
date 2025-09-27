@@ -16,20 +16,12 @@ interface MessageTemplate {
 
 interface MessageField {
   key: keyof Lead;
-  statusKey: keyof Lead;
   label: string;
   description: string;
-  status: string;
+  isSent: boolean;
   content: string | null;
   templates?: MessageTemplate[];
 }
-
-const MESSAGE_STATUSES = [
-  { value: 'draft', label: 'Draft', color: 'text-gray-400' },
-  { value: 'sent', label: 'Sent', color: 'text-green-400' },
-  { value: 'scheduled', label: 'Scheduled', color: 'text-blue-400' },
-  { value: 'failed', label: 'Failed', color: 'text-red-400' }
-];
 
 const dm2Templates: MessageTemplate[] = [
   {
@@ -102,52 +94,34 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Dynamic placeholder replacement function
-  const replacePlaceholders = (content: string): string => {
-    return content
-      .replace(/\[Name\]/g, lead.lead_name || '[Name]')
-      .replace(/\[Company\]/g, lead.lead_company_name || '[Company]')
-      .replace(/\[restate their actual challenge\]/g, lead.potential_services || '[restate their actual challenge]')
-      .replace(/\[similar industry or function\]/g, lead.industry || '[similar industry or function]')
-      .replace(/\[specific area they mentioned\]/g, lead.potential_services || '[specific area they mentioned]')
-      .replace(/\[adjusted focus\]/g, lead.potential_services || '[adjusted focus]')
-      .replace(/\[specific solution\]/g, lead.potential_services || '[specific solution]')
-      .replace(/\[specific area\]/g, lead.potential_services || '[specific area]')
-      .replace(/\[specific project\/challenge they mentioned\]/g, lead.potential_services || '[specific project/challenge they mentioned]');
-  };
-
   const messageFields: MessageField[] = [
     {
       key: 'connection_request_message',
-      statusKey: 'connection_request_message', // No separate status for connection request
       label: 'Connection Request',
       description: 'Initial connection request message',
-      status: lead.connection_request_message ? 'sent' : 'draft',
+      isSent: !!lead.connection_request_message,
       content: lead.connection_request_message
     },
     {
       key: 'dm_1',
-      statusKey: 'dm_1_status',
       label: 'DM1 - Initial Message',
       description: 'First direct message after connection',
-      status: lead.dm_1_status || 'draft',
+      isSent: !!lead.dm_1sent,
       content: lead.dm_1
     },
     {
       key: 'dm_2',
-      statusKey: 'dm_2_status',
       label: 'DM2 - Follow-up',
       description: 'Follow-up message (3 days after DM1)',
-      status: lead.dm_2_status || 'draft',
+      isSent: !!lead.dm_2,
       content: lead.dm_2,
       templates: dm2Templates
     },
     {
       key: 'dm_3',
-      statusKey: 'dm_3_status',
       label: 'DM3 - Final Follow-up',
       description: 'Final follow-up message (5 days after DM2)',
-      status: lead.dm_3_status || 'draft',
+      isSent: !!lead.dm_3,
       content: lead.dm_3,
       templates: dm3Templates
     }
@@ -162,27 +136,12 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
   const handleTemplateSelect = (templateId: string, field: MessageField) => {
     const template = field.templates?.find(t => t.id === templateId);
     if (template) {
-      const contentWithPlaceholders = replacePlaceholders(template.content);
-      setEditContent(contentWithPlaceholders);
+      setEditContent(template.content);
       setSelectedTemplate(templateId);
     }
   };
 
-  const handleStatusChange = async (field: MessageField, newStatus: string) => {
-    setIsUpdating(true);
-    try {
-      const updates: Partial<Lead> = { [field.statusKey]: newStatus };
-      await onUpdate(lead.process_id, updates);
-      toast.success('Status updated successfully');
-    } catch (error) {
-      console.error('Error updating status:', error);
-      toast.error('Failed to update status');
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleSave = async (field: keyof Lead, statusKey: keyof Lead) => {
+  const handleSave = async (field: keyof Lead) => {
     if (!editContent.trim()) {
       toast.error('Message cannot be empty');
       return;
@@ -190,10 +149,12 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
 
     setIsUpdating(true);
     try {
-      const updates: Partial<Lead> = { 
-        [field]: editContent.trim(),
-        [statusKey]: 'sent' // Auto-set to sent when saving content
-      };
+      const updates: Partial<Lead> = { [field]: editContent.trim() };
+      
+      // If it's DM1, also set dm_1sent to true
+      if (field === 'dm_1') {
+        updates.dm_1sent = true;
+      }
 
       await onUpdate(lead.process_id, updates);
       setEditingField(null);
@@ -228,18 +189,12 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
     return template?.label || null;
   };
 
-  const getStatusColor = (status: string) => {
-    const statusConfig = MESSAGE_STATUSES.find(s => s.value === status);
-    return statusConfig?.color || 'text-gray-400';
+  const getStatusColor = (isSent: boolean) => {
+    return isSent ? 'text-green-400' : 'text-gray-400';
   };
 
-  const getStatusDot = (status: string) => {
-    switch (status) {
-      case 'sent': return 'bg-green-500';
-      case 'scheduled': return 'bg-blue-500';
-      case 'failed': return 'bg-red-500';
-      default: return 'bg-gray-500';
-    }
+  const getStatusDot = (isSent: boolean) => {
+    return isSent ? 'bg-green-500' : 'bg-gray-500';
   };
 
   return (
@@ -258,7 +213,7 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
               {/* Message Header */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${getStatusDot(field.status)}`} />
+                  <div className={`w-3 h-3 rounded-full ${getStatusDot(field.isSent)}`} />
                   <div>
                     <h4 className="text-text font-medium">{field.label}</h4>
                     <p className="text-muted text-sm">{field.description}</p>
@@ -286,19 +241,12 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
                   
                   {/* Status Dropdown */}
                   <div className="relative">
-                    <select
-                      value={field.status}
-                      onChange={(e) => handleStatusChange(field, e.target.value)}
-                      disabled={isUpdating || field.key === 'connection_request_message'}
-                      className="appearance-none bg-elevated border border-white/10 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:border-accent-red disabled:opacity-50"
-                    >
-                      {MESSAGE_STATUSES.map((status) => (
-                        <option key={status.value} value={status.value}>
-                          {status.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
+                    <div className="flex items-center gap-2 bg-elevated border border-white/10 rounded-lg px-3 py-2">
+                      <span className={`text-sm font-medium ${getStatusColor(field.isSent)}`}>
+                        {field.isSent ? 'Sent' : 'Not Sent'}
+                      </span>
+                      <ChevronDown className="h-4 w-4 text-muted" />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -324,7 +272,7 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
                     />
                     <div className="flex items-center gap-3">
                       <button
-                        onClick={() => handleSave(field.key, field.statusKey)}
+                        onClick={() => handleSave(field.key)}
                         disabled={isUpdating || !editContent.trim()}
                         className="flex items-center gap-2 px-4 py-2 bg-accent-red hover:bg-accent-red-hover text-white rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
@@ -343,14 +291,12 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
                   <div className="space-y-4">
                     {field.content ? (
                       <div className="bg-elevated rounded-xl p-4 border border-white/5 relative group">
-                        <p className="text-text whitespace-pre-wrap leading-relaxed">
-                          {replacePlaceholders(field.content)}
-                        </p>
+                        <p className="text-text whitespace-pre-wrap leading-relaxed">{field.content}</p>
                         
                         {/* Action buttons - show on hover */}
                         <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
-                            onClick={() => copyToClipboard(replacePlaceholders(field.content!))}
+                            onClick={() => copyToClipboard(field.content!)}
                             className="p-1.5 bg-elevated hover:bg-white/10 text-muted hover:text-text rounded-lg transition-colors"
                             title="Copy message"
                           >

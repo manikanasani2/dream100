@@ -60,7 +60,7 @@ const LeadTimelineTab: React.FC<LeadTimelineTabProps> = ({ lead }) => {
     }
 
     // DM1 Sent
-    if (lead.dm_1_status === 'sent') {
+    if (lead.dm_1sent) {
       events.push({
         id: 'dm1_sent',
         title: 'DM1 Sent',
@@ -72,7 +72,7 @@ const LeadTimelineTab: React.FC<LeadTimelineTabProps> = ({ lead }) => {
       });
 
       // Add reminder for follow-up if no DM2 sent yet
-      if (lead.dm_2_status !== 'sent') {
+      if (!lead.dm_2) {
         const followUpDate = new Date(lead.dm1_timestamp || lead.updated_at || lead.created_at || Date.now());
         followUpDate.setDate(followUpDate.getDate() + 3); // 3 days after DM1
         
@@ -89,7 +89,7 @@ const LeadTimelineTab: React.FC<LeadTimelineTabProps> = ({ lead }) => {
     }
 
     // DM2 Sent
-    if (lead.dm_2_status === 'sent') {
+    if (lead.dm_2) {
       events.push({
         id: 'dm2_sent',
         title: 'DM2 Sent',
@@ -102,7 +102,7 @@ const LeadTimelineTab: React.FC<LeadTimelineTabProps> = ({ lead }) => {
     }
 
     // DM3 Sent
-    if (lead.dm_3_status === 'sent') {
+    if (lead.dm_3) {
       events.push({
         id: 'dm3_sent',
         title: 'DM3 Sent',

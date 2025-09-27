@@ -32,11 +32,9 @@ export type Lead = {
   dm_1: string | null;
   dm_2: string | null;
   dm_3: string | null;
-  dm_1_status: string | null;
-  dm_2_status: string | null;
-  dm_3_status: string | null;
   dm1_timestamp: string | null;
   booked_meeting: boolean | null;
   industry: string | null;
   job_title: string | null;
+  dm_1sent: boolean | null;
 };

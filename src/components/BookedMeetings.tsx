@@ -210,9 +210,9 @@ const BookedMeetings: React.FC = () => {
                         const journeySteps = [
                           lead.connection_request_message && '📤',
                           lead.connection_accepted_status && '🤝',
-                          lead.dm_1_status === 'sent' && '💬',
-                          lead.dm_2_status === 'sent' && '📩',
-                          lead.dm_3_status === 'sent' && '📬',
+                          lead.dm_1sent && '💬',
+                          lead.dm_2 && '📩',
+                          lead.dm_3 && '📬',
                           lead.booked_meeting && '🎉'
                         ].filter(Boolean);
 
