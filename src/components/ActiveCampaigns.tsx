@@ -13,7 +13,7 @@ import {
 
 const ActiveCampaigns: React.FC = () => {
   const { leads, loading, error, updateLead, deleteLead } = useLeads();
-  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [selectedLead, setSelectedLead] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
   // Filter for active campaign leads (connected but not booked)
@@ -22,13 +22,13 @@ const ActiveCampaigns: React.FC = () => {
   );
 
   const handleRowClick = (lead: any) => {
-    setSelectedLeadId(lead.process_id);
+    setSelectedLead(lead);
     setShowDetailModal(true);
   };
 
   const handlePillClick = (e: React.MouseEvent, lead: any) => {
     e.stopPropagation(); // Prevent row click
-    setSelectedLeadId(lead.process_id);
+    setSelectedLead(lead);
     setShowDetailModal(true);
   };
 
@@ -228,7 +228,9 @@ const ActiveCampaigns: React.FC = () => {
       <LeadDetailModal
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
-        selectedLeadId={selectedLeadId}
+        lead={selectedLead}
+        onUpdate={updateLead}
+        onDelete={deleteLead}
       />
     </div>
   );

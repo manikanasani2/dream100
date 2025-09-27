@@ -3,13 +3,20 @@ import { useLeads } from '../hooks/useLeads';
 import { toast } from 'react-hot-toast';
 import AddLeadModal from './AddLeadModal';
 import LeadDetailModal from './LeadDetailModal';
-import { Search, Plus, ExternalLink, CreditCard as Edit, Users, Linkedin } from 'lucide-react';
+import { 
+  Search, 
+  Plus,
+  ExternalLink,
+  Edit,
+  Users,
+  Linkedin
+} from 'lucide-react';
 
 const AllLeads: React.FC = () => {
   const { leads, loading, error, deleteLead, updateLead, refetch } = useLeads();
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [selectedLead, setSelectedLead] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
   // Filter leads based on search
@@ -26,12 +33,12 @@ const AllLeads: React.FC = () => {
   }, [leads, searchTerm]);
 
   const handleViewDetails = (lead: any) => {
-    setSelectedLeadId(lead.process_id);
+    setSelectedLead(lead);
     setShowDetailModal(true);
   };
 
   const handleRowClick = (lead: any) => {
-    setSelectedLeadId(lead.process_id);
+    setSelectedLead(lead);
     setShowDetailModal(true);
   };
 
@@ -177,7 +184,7 @@ const AllLeads: React.FC = () => {
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedLeadId(lead.process_id);
+                        setSelectedLead(lead);
                         setShowDetailModal(true);
                       }}
                       className="p-1.5 text-[#9CA3AF] hover:text-accent-red hover:bg-[#2a2a2a] rounded transition-all duration-300 ease-out opacity-0 group-hover:opacity-100 hover:scale-110"
@@ -211,7 +218,9 @@ const AllLeads: React.FC = () => {
       <LeadDetailModal
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
-        selectedLeadId={selectedLeadId}
+        lead={selectedLead}
+        onUpdate={updateLead}
+        onDelete={deleteLead}
       />
     </div>
   );
