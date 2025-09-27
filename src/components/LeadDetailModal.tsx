@@ -294,22 +294,22 @@ const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                 </div>
                 <div className="space-y-4">
                   <ToggleSwitch
-                    checked={!!lead.dm_1sent}
-                    onChange={(checked) => handleToggleChange('dm_1sent', checked)}
+                    checked={lead.dm_1_status === 'sent'}
+                    onChange={(checked) => handleToggleChange('dm_1_status', checked ? 'sent' : 'draft')}
                     label="DM1 Sent"
                     disabled={isUpdating || !lead.connection_accepted_status}
                   />
                   <ToggleSwitch
-                    checked={!!lead.dm_2}
-                    onChange={(checked) => handleToggleChange('dm_2', checked)}
+                    checked={lead.dm_2_status === 'sent'}
+                    onChange={(checked) => handleToggleChange('dm_2_status', checked ? 'sent' : 'draft')}
                     label="DM2 Sent"
-                    disabled={isUpdating || !lead.dm_1sent}
+                    disabled={isUpdating || lead.dm_1_status !== 'sent'}
                   />
                   <ToggleSwitch
-                    checked={!!lead.dm_3}
-                    onChange={(checked) => handleToggleChange('dm_3', checked)}
+                    checked={lead.dm_3_status === 'sent'}
+                    onChange={(checked) => handleToggleChange('dm_3_status', checked ? 'sent' : 'draft')}
                     label="DM3 Sent"
-                    disabled={isUpdating || !lead.dm_2}
+                    disabled={isUpdating || lead.dm_2_status !== 'sent'}
                   />
                 </div>
               </div>

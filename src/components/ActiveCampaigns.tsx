@@ -181,7 +181,7 @@ const ActiveCampaigns: React.FC = () => {
                       <td className="p-4 text-center">
                         <TogglePill
                           label="DM1"
-                          isOn={!!lead.dm_1sent}
+                          isOn={lead.dm_1_status === 'sent'}
                           onClick={(e) => handlePillClick(e, lead)}
                           disabled={!lead.connection_accepted_status}
                         />
@@ -189,17 +189,17 @@ const ActiveCampaigns: React.FC = () => {
                       <td className="p-4 text-center">
                         <TogglePill
                           label="DM2"
-                          isOn={!!lead.dm_2}
+                          isOn={lead.dm_2_status === 'sent'}
                           onClick={(e) => handlePillClick(e, lead)}
-                          disabled={!lead.dm_1sent}
+                          disabled={lead.dm_1_status !== 'sent'}
                         />
                       </td>
                       <td className="p-4 text-center">
                         <TogglePill
                           label="DM3"
-                          isOn={!!lead.dm_3}
+                          isOn={lead.dm_3_status === 'sent'}
                           onClick={(e) => handlePillClick(e, lead)}
-                          disabled={!lead.dm_2}
+                          disabled={lead.dm_2_status !== 'sent'}
                         />
                       </td>
                       <td className="p-4 text-center">
