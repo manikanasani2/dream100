@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageSquare, CreditCard as Edit3, Copy, Check, Send } from 'lucide-react';
+import { MessageSquare, Edit3, Copy, Check, Send, ChevronDown } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Lead } from '../lib/supabase';
 
@@ -8,17 +8,90 @@ interface LeadMessagesTabProps {
   onUpdate: (process_id: string, updates: Partial<Lead>) => Promise<void>;
 }
 
+interface MessageTemplate {
+  id: string;
+  label: string;
+  content: string;
+}
+
 interface MessageField {
   key: keyof Lead;
   label: string;
   description: string;
   isSent: boolean;
   content: string | null;
+  templates?: MessageTemplate[];
 }
+
+const dm2Templates: MessageTemplate[] = [
+  {
+    id: 'positive_confirmation',
+    label: 'POSITIVE CONFIRMATION',
+    content: `Hi [Name],
+
+Thanks — glad the brief resonated. It sounds like the challenge we highlighted around [restate their actual challenge] is playing out at [Company] the way we see it elsewhere. We recently helped a client in [similar industry or function] reduce time-to-insight by 40% with a focused approach on [specific area they mentioned], which might be relevant here.
+
+If that sounds useful, would you be open to a 20-30 minute call next week to validate priorities and see a short example of how we'd approach it? I can share a one-page plan and a quick case study on the call. Two times that work for me: [date/time 1] or [date/time 2]. Which works better for you?`
+  },
+  {
+    id: 'partial_agreement',
+    label: 'PARTIAL AGREEMENT',
+    content: `Hi [Name],
+
+Thanks for the clarification — that helps. I hear you on the parts that differ and appreciate the correction about [specific area they mentioned]. Based on your input, here's how I'd re-frame the problem: [restate their actual challenge] with a focus on [adjusted focus]. That changes the solution priorities to X (quick bullet): 1) [priority A], 2) [priority B], 3) [priority C].
+
+If you're open, let's schedule a brief 25-minute call to walk through that reframed approach and surface any quick wins we could pilot. I can bring a short roadmap tailored to [Company] and an example from a client who faced something similar. Are you available [date/time options]?`
+  },
+  {
+    id: 'negative_off_target',
+    label: 'NEGATIVE OFF TARGET',
+    content: `Hi [Name],
+
+Thanks for the honest feedback — I appreciate you flagging that. Sounds like I missed the mark on the brief and I want to learn more rather than assume. Can you tell me what's keeping you up at night right now or what outcome you're actually prioritizing (e.g., cost, speed, compliance, headcount)?
+
+No slide deck, no pitch — just a 15-minute call so I can understand your reality and decide if we should follow up with anything useful. What's a good time this week for a short chat?`
+  }
+];
+
+const dm3Templates: MessageTemplate[] = [
+  {
+    id: 'video_followup',
+    label: 'STEP6 VIDEO FOLLOWUP',
+    content: `Hi [Name],
+
+I sent over the AI Opportunity Brief for [Company] recently — I realize it was a bit detailed. I put together a short video that walks through the key points and how they relate to [restate their actual challenge]. You can watch it here: [Video Link].
+
+Would you have a minute to let me know if this direction is worth exploring further for [Company]?`
+  },
+  {
+    id: 'video_engaged',
+    label: 'STEP7 VIDEO ENGAGED',
+    content: `Hi [Name],
+
+Thanks for taking a look at the video. I'd love your take on the analysis — does this align with [Company]'s current priorities, or should I focus on [specific solution] instead?`
+  },
+  {
+    id: 'no_video_response',
+    label: 'STEP7 NO VIDEO RESPONSE',
+    content: `Hi [Name],
+
+Just checking in — I haven't heard back after sending the video. Did the analysis miss the mark for [Company], or is the timing not right? Any quick feedback would be really helpful.`
+  },
+  {
+    id: 'final_touch',
+    label: 'STEP8 FINAL TOUCH',
+    content: `Hi [Name],
+
+Last check-in from me. I know timing isn't always right, but wanted to leave the door open in case anything changes with your priorities around [specific area]. Feel free to reach out if there's ever a good time to explore this further.
+
+Best of luck with [specific project/challenge they mentioned]!`
+  }
+];
 
 const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editContent, setEditContent] = useState<string>('');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
 
   const messageFields: MessageField[] = [
@@ -39,22 +112,33 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
     {
       key: 'dm_2',
       label: 'DM2 - Follow-up',
-      description: 'Second follow-up message',
+      description: 'Follow-up message (3 days after DM1)',
       isSent: !!lead.dm_2,
-      content: lead.dm_2
+      content: lead.dm_2,
+      templates: dm2Templates
     },
     {
       key: 'dm_3',
       label: 'DM3 - Final Follow-up',
-      description: 'Third and final follow-up message',
+      description: 'Final follow-up message (5 days after DM2)',
       isSent: !!lead.dm_3,
-      content: lead.dm_3
+      content: lead.dm_3,
+      templates: dm3Templates
     }
   ];
 
   const handleEdit = (field: string, currentContent: string | null) => {
     setEditingField(field);
     setEditContent(currentContent || '');
+    setSelectedTemplate('');
+  };
+
+  const handleTemplateSelect = (templateId: string, field: MessageField) => {
+    const template = field.templates?.find(t => t.id === templateId);
+    if (template) {
+      setEditContent(template.content);
+      setSelectedTemplate(templateId);
+    }
   };
 
   const handleSave = async (field: keyof Lead) => {
@@ -74,6 +158,7 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
 
       await onUpdate(lead.process_id, updates);
       setEditingField(null);
+      setSelectedTemplate('');
       toast.success('Message updated successfully');
     } catch (error) {
       console.error('Error updating message:', error);
@@ -86,6 +171,7 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
   const handleCancel = () => {
     setEditingField(null);
     setEditContent('');
+    setSelectedTemplate('');
   };
 
   const copyToClipboard = async (content: string) => {
@@ -97,6 +183,20 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
     }
   };
 
+  const getTemplateLabel = (content: string | null, templates?: MessageTemplate[]): string | null => {
+    if (!content || !templates) return null;
+    const template = templates.find(t => t.content.trim() === content.trim());
+    return template?.label || null;
+  };
+
+  const getStatusColor = (isSent: boolean) => {
+    return isSent ? 'text-green-400' : 'text-gray-400';
+  };
+
+  const getStatusDot = (isSent: boolean) => {
+    return isSent ? 'bg-green-500' : 'bg-gray-500';
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-6">
@@ -105,91 +205,131 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
       </div>
 
       <div className="space-y-6">
-        {messageFields.map((field) => (
-          <div key={field.key} className="glass-card rounded-2xl p-6 border border-white/10">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${
-                  field.isSent ? 'bg-green-500' : 'bg-gray-500'
-                }`} />
-                <div>
-                  <h4 className="text-text font-medium">{field.label}</h4>
-                  <p className="text-muted text-sm">{field.description}</p>
+        {messageFields.map((field) => {
+          const templateLabel = getTemplateLabel(field.content, field.templates);
+          
+          return (
+            <div key={field.key} className="space-y-4">
+              {/* Message Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full ${getStatusDot(field.isSent)}`} />
+                  <div>
+                    <h4 className="text-text font-medium">{field.label}</h4>
+                    <p className="text-muted text-sm">{field.description}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {/* Template Dropdown for DM2 and DM3 */}
+                  {field.templates && editingField === field.key && (
+                    <div className="relative">
+                      <select
+                        value={selectedTemplate}
+                        onChange={(e) => handleTemplateSelect(e.target.value, field)}
+                        className="appearance-none bg-elevated border border-white/20 rounded-lg px-3 py-2 pr-8 text-text text-sm focus:outline-none focus:border-accent-red"
+                      >
+                        <option value="">Select Template</option>
+                        {field.templates.map((template) => (
+                          <option key={template.id} value={template.id}>
+                            {template.label}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
+                    </div>
+                  )}
+                  
+                  {/* Status Dropdown */}
+                  <div className="relative">
+                    <div className="flex items-center gap-2 bg-elevated border border-white/10 rounded-lg px-3 py-2">
+                      <span className={`text-sm font-medium ${getStatusColor(field.isSent)}`}>
+                        {field.isSent ? 'Sent' : 'Not Sent'}
+                      </span>
+                      <ChevronDown className="h-4 w-4 text-muted" />
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                {field.isSent ? (
-                  <span className="px-2 py-1 bg-green-500/10 text-green-400 text-xs rounded-full border border-green-500/20">
-                    <Send className="h-3 w-3 inline mr-1" />
-                    Sent
+
+              {/* Template Label */}
+              {templateLabel && editingField !== field.key && (
+                <div className="ml-6">
+                  <span className="inline-block px-3 py-1 bg-purple-500/20 text-purple-300 text-xs font-medium rounded-md border border-purple-500/30">
+                    {templateLabel}
                   </span>
+                </div>
+              )}
+
+              {/* Message Content */}
+              <div className="ml-6">
+                {editingField === field.key ? (
+                  <div className="space-y-4">
+                    <textarea
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      className="futuristic-input w-full px-4 py-3 rounded-xl text-text placeholder-muted focus:outline-none resize-none min-h-[200px]"
+                      placeholder={`Enter your ${field.label.toLowerCase()}...`}
+                    />
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => handleSave(field.key)}
+                        disabled={isUpdating || !editContent.trim()}
+                        className="flex items-center gap-2 px-4 py-2 bg-accent-red hover:bg-accent-red-hover text-white rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Check className="h-4 w-4" />
+                        {isUpdating ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        onClick={handleCancel}
+                        className="px-4 py-2 bg-elevated hover:bg-white/10 text-text rounded-xl transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
                 ) : (
-                  <span className="px-2 py-1 bg-gray-500/10 text-gray-400 text-xs rounded-full border border-gray-500/20">
-                    Not Sent
-                  </span>
+                  <div className="space-y-4">
+                    {field.content ? (
+                      <div className="bg-elevated rounded-xl p-4 border border-white/5 relative group">
+                        <p className="text-text whitespace-pre-wrap leading-relaxed">{field.content}</p>
+                        
+                        {/* Action buttons - show on hover */}
+                        <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => copyToClipboard(field.content!)}
+                            className="p-1.5 bg-elevated hover:bg-white/10 text-muted hover:text-text rounded-lg transition-colors"
+                            title="Copy message"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEdit(field.key, field.content)}
+                            className="p-1.5 bg-elevated hover:bg-white/10 text-muted hover:text-text rounded-lg transition-colors"
+                            title="Edit message"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-elevated rounded-xl p-8 border border-white/5 text-center">
+                        <MessageSquare className="h-8 w-8 text-muted mx-auto mb-3" />
+                        <p className="text-muted italic mb-4">No message content yet</p>
+                        <button
+                          onClick={() => handleEdit(field.key, field.content)}
+                          className="flex items-center gap-2 px-4 py-2 bg-accent-red hover:bg-accent-red-hover text-white rounded-xl transition-colors mx-auto"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                          Add Message
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
-
-            {editingField === field.key ? (
-              <div className="space-y-4">
-                <textarea
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  className="futuristic-input w-full px-4 py-3 rounded-xl text-text placeholder-muted focus:outline-none resize-none"
-                  rows={6}
-                  placeholder={`Enter your ${field.label.toLowerCase()}...`}
-                />
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => handleSave(field.key)}
-                    disabled={isUpdating || !editContent.trim()}
-                    className="flex items-center gap-2 px-4 py-2 bg-accent-red hover:bg-accent-red-hover text-white rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Check className="h-4 w-4" />
-                    {isUpdating ? 'Saving...' : 'Save'}
-                  </button>
-                  <button
-                    onClick={handleCancel}
-                    className="px-4 py-2 bg-elevated hover:bg-white/10 text-text rounded-xl transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {field.content ? (
-                  <div className="bg-elevated rounded-xl p-4 border border-white/5">
-                    <p className="text-text whitespace-pre-wrap">{field.content}</p>
-                  </div>
-                ) : (
-                  <div className="bg-elevated rounded-xl p-4 border border-white/5 text-center">
-                    <p className="text-muted italic">No message content yet</p>
-                  </div>
-                )}
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => handleEdit(field.key, field.content)}
-                    className="flex items-center gap-2 px-3 py-2 bg-elevated hover:bg-white/10 text-text rounded-xl transition-colors text-sm"
-                  >
-                    <Edit3 className="h-4 w-4" />
-                    Edit
-                  </button>
-                  {field.content && (
-                    <button
-                      onClick={() => copyToClipboard(field.content!)}
-                      className="flex items-center gap-2 px-3 py-2 bg-elevated hover:bg-white/10 text-text rounded-xl transition-colors text-sm"
-                    >
-                      <Copy className="h-4 w-4" />
-                      Copy
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
