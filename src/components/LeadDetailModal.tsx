@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Building, Mail, Phone, Globe, Linkedin, MessageSquare, Calendar, Trash2 } from 'lucide-react';
+import { X, User, Building, Mail, Phone, Globe, Linkedin, MessageSquare, Calendar, Trash2, Clock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import ToggleSwitch from './ToggleSwitch';
+import LeadMessagesTab from './LeadMessagesTab';
+import LeadTimelineTab from './LeadTimelineTab';
 import { Lead } from '../lib/supabase';
 
 interface LeadDetailModalProps {
@@ -21,6 +23,7 @@ const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'details' | 'messages' | 'timeline'>('details');
 
   // Handle toggle changes with proper state management
   const handleToggleChange = async (field: keyof Lead, newValue: boolean, defaultMessage?: string) => {
@@ -113,9 +116,44 @@ const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
           </button>
         </div>
 
+        {/* Tab Navigation */}
+        <div className="flex gap-1 p-1 bg-elevated rounded-xl mb-6">
+          <button
+            onClick={() => setActiveTab('details')}
+            className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              activeTab === 'details'
+                ? 'bg-accent-red text-white shadow-lg shadow-accent-red/25'
+                : 'text-muted hover:text-text hover:bg-white/5'
+            }`}
+          >
+            Details
+          </button>
+          <button
+            onClick={() => setActiveTab('messages')}
+            className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              activeTab === 'messages'
+                ? 'bg-accent-red text-white shadow-lg shadow-accent-red/25'
+                : 'text-muted hover:text-text hover:bg-white/5'
+            }`}
+          >
+            Messages
+          </button>
+          <button
+            onClick={() => setActiveTab('timeline')}
+            className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              activeTab === 'timeline'
+                ? 'bg-accent-red text-white shadow-lg shadow-accent-red/25'
+                : 'text-muted hover:text-text hover:bg-white/5'
+            }`}
+          >
+            Timeline
+          </button>
+        </div>
+
         {/* Content */}
-        <div className="p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="p-6 min-h-[400px]">
+          {activeTab === 'details' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Column */}
             <div className="space-y-6">
               {/* Contact Information */}
@@ -293,9 +331,18 @@ const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
               </div>
             </div>
           </div>
+          )}
+
+          {activeTab === 'messages' && (
+            <LeadMessagesTab lead={lead} onUpdate={onUpdate} />
+          )}
+
+          {activeTab === 'timeline' && (
+            <LeadTimelineTab lead={lead} />
+          )}
 
           {/* Actions */}
-          <div className="flex justify-between items-center pt-6 mt-6 border-t border-white/10">
+          <div className="flex justify-between items-center pt-6 mt-8 border-t border-white/10">
             <button
               onClick={handleDelete}
               disabled={isDeleting}
