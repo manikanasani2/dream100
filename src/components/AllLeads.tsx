@@ -3,14 +3,7 @@ import { useLeads } from '../hooks/useLeads';
 import { toast } from 'react-hot-toast';
 import AddLeadModal from './AddLeadModal';
 import LeadDetailModal from './LeadDetailModal';
-import { 
-  Search, 
-  Plus,
-  ExternalLink,
-  Edit,
-  Users,
-  Linkedin
-} from 'lucide-react';
+import { Search, Plus, ExternalLink, CreditCard as Edit, Users, Linkedin } from 'lucide-react';
 
 const AllLeads: React.FC = () => {
   const { leads, loading, error, deleteLead, updateLead, refetch } = useLeads();
