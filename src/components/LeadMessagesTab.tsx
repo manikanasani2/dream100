@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageSquare, Edit3, Copy, Check, Send, ChevronDown } from 'lucide-react';
+import { MessageSquare, CreditCard as Edit3, Copy, Check, Send, ChevronDown } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Lead } from '../lib/supabase';
 
