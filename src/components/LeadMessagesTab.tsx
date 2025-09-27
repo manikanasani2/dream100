@@ -530,7 +530,6 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
                         )}
                       </div>
                     )}
-                  </div>
                 )}
               </div>
             </div>
