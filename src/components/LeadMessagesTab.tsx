@@ -90,7 +90,6 @@ Best of luck with [specific project/challenge they mentioned]!`
 const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editContent, setEditContent] = useState<string>('');
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
 
   // Parsed message content state
@@ -114,7 +113,40 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
     setParsedDm1Content(parseMessageContent(lead.dm_1));
     setParsedDm2Content(parseMessageContent(lead.dm_2));
     setParsedDm3Content(parseMessageContent(lead.dm_3));
+
+    // Apply default templates if no content exists
+    applyDefaultTemplate('dm_1', dm1Templates);
+    applyDefaultTemplate('dm_2', dm2Templates);
+    applyDefaultTemplate('dm_3', dm3Templates);
   }, [lead.dm_1, lead.dm_2, lead.dm_3]);
+
+  const applyDefaultTemplate = async (dmKey: keyof Lead, templates: MessageTemplate[]) => {
+    // Check if no content exists and there's exactly one template
+    if ((!lead[dmKey] || lead[dmKey] === '') && templates.length === 1) {
+      try {
+        const template = templates[0];
+        const updates: Partial<Lead> = { [dmKey]: JSON.stringify(template.content) };
+        
+        // If it's DM1, also set dm_1sent to true
+        if (dmKey === 'dm_1') {
+          updates.dm_1sent = true;
+        }
+
+        await onUpdate(lead.process_id, updates);
+        
+        // Update local state for immediate visual update
+        if (dmKey === 'dm_1') {
+          setParsedDm1Content(template.content);
+        } else if (dmKey === 'dm_2') {
+          setParsedDm2Content(template.content);
+        } else if (dmKey === 'dm_3') {
+          setParsedDm3Content(template.content);
+        }
+      } catch (error) {
+        console.error(`Error applying default template for ${dmKey}:`, error);
+      }
+    }
+  };
 
   const messageFields: MessageField[] = [
     {
@@ -180,23 +212,6 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
   const handleEdit = (field: string, currentContent: string | null) => {
     setEditingField(field);
     setEditContent(currentContent || '');
-    setSelectedTemplate('');
-  };
-
-  const handleTemplateSelect = (templateId: string, field: MessageField) => {
-    const template = field.templates?.find(t => t.id === templateId);
-    if (template) {
-      // For structured content, we need to update the entire parsed content
-      if (field.key === 'dm_1') {
-        setParsedDm1Content(template.content);
-      } else if (field.key === 'dm_2') {
-        setParsedDm2Content(template.content);
-      } else if (field.key === 'dm_3') {
-        setParsedDm3Content(template.content);
-      }
-      setSelectedTemplate(templateId);
-      setEditingField(null);
-    }
   };
 
   const handleSave = async (field: keyof Lead) => {
@@ -216,7 +231,6 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
 
       await onUpdate(lead.process_id, updates);
       setEditingField(null);
-      setSelectedTemplate('');
       toast.success('Message updated successfully');
     } catch (error) {
       console.error('Error updating message:', error);
@@ -270,7 +284,6 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
   const handleCancel = () => {
     setEditingField(null);
     setEditContent('');
-    setSelectedTemplate('');
   };
 
   const copyToClipboard = async (content: string) => {
@@ -414,25 +427,6 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  {/* Template Dropdown for structured messages */}
-                  {field.templates && !editingField?.startsWith(field.key) && (
-                    <div className="relative">
-                      <select
-                        value={selectedTemplate}
-                        onChange={(e) => handleTemplateSelect(e.target.value, field)}
-                        className="appearance-none bg-elevated border border-white/20 rounded-lg px-3 py-2 pr-8 text-text text-sm focus:outline-none focus:border-accent-red"
-                      >
-                        <option value="">Select Template</option>
-                        {field.templates.map((template) => (
-                          <option key={template.id} value={template.id}>
-                            {template.label}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
-                    </div>
-                  )}
-                  
                   {/* Status Dropdown */}
                   <div className="relative">
                     <div className="flex items-center gap-2 bg-elevated border border-white/10 rounded-lg px-3 py-2">
