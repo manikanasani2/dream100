@@ -5,25 +5,26 @@ import ToggleSwitch from './ToggleSwitch';
 import LeadMessagesTab from './LeadMessagesTab';
 import LeadTimelineTab from './LeadTimelineTab';
 import { Lead } from '../lib/supabase';
+import { useLeads } from '../hooks/useLeads';
 
 interface LeadDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
-  lead: Lead | null;
-  onUpdate: (process_id: string, updates: Partial<Lead>) => Promise<void>;
-  onDelete: (process_id: string) => Promise<void>;
+  selectedLeadId: string | null;
 }
 
 const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
   isOpen,
   onClose,
-  lead,
-  onUpdate,
-  onDelete
+  selectedLeadId
 }) => {
+  const { leads, updateLead, deleteLead } = useLeads();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'messages' | 'timeline'>('details');
+
+  // Find the current lead from the leads array using selectedLeadId
+  const lead = selectedLeadId ? leads.find(l => l.process_id === selectedLeadId) : null;
 
   // Handle toggle changes with proper state management
   const handleToggleChange = async (field: keyof Lead, newValue: boolean, defaultMessage?: string) => {
@@ -38,7 +39,7 @@ const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
         updateValue = newValue ? (defaultMessage || 'Connection request sent') : null;
       }
       
-      await onUpdate(lead.process_id, { [field]: updateValue });
+      await updateLead(lead.process_id, { [field]: updateValue });
       
       // Show success toast
       const fieldName = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -60,7 +61,7 @@ const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
 
     setIsDeleting(true);
     try {
-      await onDelete(lead.process_id);
+      await deleteLead(lead.process_id);
       toast.success('Lead deleted successfully');
       onClose();
     } catch (error) {
@@ -334,7 +335,7 @@ const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
           )}
 
           {activeTab === 'messages' && (
-            <LeadMessagesTab lead={lead} onUpdate={onUpdate} />
+            <LeadMessagesTab lead={lead} onUpdate={updateLead} />
           )}
 
           {activeTab === 'timeline' && (
