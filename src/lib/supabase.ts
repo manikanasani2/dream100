@@ -11,6 +11,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
 
+export type StructuredMessageContent = Record<string, string>;
+
 export type Lead = {
   process_id: string;
   lead_name: string;
