@@ -6,6 +6,9 @@ import LeadMessagesTab from './LeadMessagesTab';
 import LeadTimelineTab from './LeadTimelineTab';
 import { Lead } from '../lib/supabase';
 
+// Default connection request message template
+const DEFAULT_CONNECTION_MESSAGE_TEMPLATE = "Hi [Name], I'd love to connect and discuss [Company]'s work in [Industry]. Looking forward to connecting!";
+
 interface LeadDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -35,7 +38,7 @@ const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
       
       // Special handling for connection_request_message
       if (field === 'connection_request_message') {
-        updateValue = newValue ? (defaultMessage || 'Connection request sent') : null;
+        updateValue = newValue ? (lead.connection_request_message || DEFAULT_CONNECTION_MESSAGE_TEMPLATE) : null;
       }
       
       await onUpdate(lead.process_id, { [field]: updateValue });

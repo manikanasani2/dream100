@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, CreditCard as Edit3, Copy, Check, Send, ChevronDown } from 'lucide-react';
+import { MessageSquare, CreditCard as Edit3, Copy, Check, Send } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Lead, StructuredMessageContent } from '../lib/supabase';
+
+// Default connection request message template
+const DEFAULT_CONNECTION_MESSAGE_TEMPLATE = "Hi [Name], I'd love to connect and discuss [Company]'s work in [Industry]. Looking forward to connecting!";
 
 interface LeadMessagesTabProps {
   lead: Lead;
@@ -90,13 +93,43 @@ Best of luck with [specific project/challenge they mentioned]!`
 const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editContent, setEditContent] = useState<string>('');
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
 
   // Parsed message content state
   const [parsedDm1Content, setParsedDm1Content] = useState<StructuredMessageContent>({});
   const [parsedDm2Content, setParsedDm2Content] = useState<StructuredMessageContent>({});
   const [parsedDm3Content, setParsedDm3Content] = useState<StructuredMessageContent>({});
+
+  // Apply default template automatically if no content exists and exactly one template is available
+  const applyDefaultTemplate = async (dmKey: keyof Lead, templates: MessageTemplate[], currentContent: string | null) => {
+    // Only apply if no content exists and exactly one template is available
+    if ((!currentContent || currentContent.trim() === '') && templates && templates.length === 1) {
+      const template = templates[0];
+      const stringifiedContent = JSON.stringify(template.content);
+      
+      try {
+        const updates: Partial<Lead> = { [dmKey]: stringifiedContent };
+        
+        // If it's DM1, also set dm_1sent to true
+        if (dmKey === 'dm_1') {
+          updates.dm_1sent = true;
+        }
+
+        await onUpdate(lead.process_id, updates);
+        
+        // Update local state for immediate visual feedback
+        if (dmKey === 'dm_1') {
+          setParsedDm1Content(template.content);
+        } else if (dmKey === 'dm_2') {
+          setParsedDm2Content(template.content);
+        } else if (dmKey === 'dm_3') {
+          setParsedDm3Content(template.content);
+        }
+      } catch (error) {
+        console.error(`Error applying default template for ${dmKey}:`, error);
+      }
+    }
+  };
 
   // Parse JSON content when lead data changes
   useEffect(() => {
@@ -114,6 +147,11 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
     setParsedDm1Content(parseMessageContent(lead.dm_1));
     setParsedDm2Content(parseMessageContent(lead.dm_2));
     setParsedDm3Content(parseMessageContent(lead.dm_3));
+
+    // Apply default templates automatically
+    applyDefaultTemplate('dm_1', dm1Templates, lead.dm_1);
+    applyDefaultTemplate('dm_2', dm2Templates, lead.dm_2);
+    applyDefaultTemplate('dm_3', dm3Templates, lead.dm_3);
   }, [lead.dm_1, lead.dm_2, lead.dm_3]);
 
   const messageFields: MessageField[] = [
@@ -122,7 +160,7 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
       label: 'Connection Request',
       description: 'Initial connection request message',
       isSent: !!lead.connection_request_message,
-      content: lead.connection_request_message
+      content: lead.connection_request_message || replacePlaceholders(DEFAULT_CONNECTION_MESSAGE_TEMPLATE)
     },
     {
       key: 'dm_1',
@@ -179,23 +217,12 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
 
   const handleEdit = (field: string, currentContent: string | null) => {
     setEditingField(field);
-    setEditContent(currentContent || '');
-    setSelectedTemplate('');
-  };
-
-  const handleTemplateSelect = (templateId: string, field: MessageField) => {
-    const template = field.templates?.find(t => t.id === templateId);
-    if (template) {
-      // For structured content, we need to update the entire parsed content
-      if (field.key === 'dm_1') {
-        setParsedDm1Content(template.content);
-      } else if (field.key === 'dm_2') {
-        setParsedDm2Content(template.content);
-      } else if (field.key === 'dm_3') {
-        setParsedDm3Content(template.content);
-      }
-      setSelectedTemplate(templateId);
-      setEditingField(null);
+    
+    // For connection request, use default template if current content is empty
+    if (field === 'connection_request_message') {
+      setEditContent(currentContent || DEFAULT_CONNECTION_MESSAGE_TEMPLATE);
+    } else {
+      setEditContent(currentContent || '');
     }
   };
 
@@ -216,7 +243,6 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
 
       await onUpdate(lead.process_id, updates);
       setEditingField(null);
-      setSelectedTemplate('');
       toast.success('Message updated successfully');
     } catch (error) {
       console.error('Error updating message:', error);
@@ -270,12 +296,13 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
   const handleCancel = () => {
     setEditingField(null);
     setEditContent('');
-    setSelectedTemplate('');
   };
 
   const copyToClipboard = async (content: string) => {
     try {
-      const personalizedContent = replacePlaceholders(content);
+      // Use default template if content is empty (for connection request)
+      const contentToCopy = content || DEFAULT_CONNECTION_MESSAGE_TEMPLATE;
+      const personalizedContent = replacePlaceholders(contentToCopy);
       await navigator.clipboard.writeText(personalizedContent);
       toast.success('Message copied to clipboard');
     } catch (error) {
@@ -414,32 +441,12 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  {/* Template Dropdown for structured messages */}
-                  {field.templates && !editingField?.startsWith(field.key) && (
-                    <div className="relative">
-                      <select
-                        value={selectedTemplate}
-                        onChange={(e) => handleTemplateSelect(e.target.value, field)}
-                        className="appearance-none bg-elevated border border-white/20 rounded-lg px-3 py-2 pr-8 text-text text-sm focus:outline-none focus:border-accent-red"
-                      >
-                        <option value="">Select Template</option>
-                        {field.templates.map((template) => (
-                          <option key={template.id} value={template.id}>
-                            {template.label}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
-                    </div>
-                  )}
-                  
                   {/* Status Dropdown */}
                   <div className="relative">
                     <div className="flex items-center gap-2 bg-elevated border border-white/10 rounded-lg px-3 py-2">
                       <span className={`text-sm font-medium ${getStatusColor(field.isSent)}`}>
                         {field.isSent ? 'Sent' : 'Not Sent'}
                       </span>
-                      <ChevronDown className="h-4 w-4 text-muted" />
                     </div>
                   </div>
                 </div>
@@ -487,13 +494,13 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
                         {field.content ? (
                           <div className="bg-elevated rounded-xl p-4 border border-white/5 relative group">
                             <p className="text-text whitespace-pre-wrap leading-relaxed">
-                              {replacePlaceholders(field.content)}
+                              {replacePlaceholders(field.content || '')}
                             </p>
                             
                             {/* Action buttons - show on hover */}
                             <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button
-                                onClick={() => copyToClipboard(field.content!)}
+                                onClick={() => copyToClipboard(field.content || '')}
                                 className="p-1.5 bg-elevated hover:bg-white/10 text-muted hover:text-text rounded-lg transition-colors"
                                 title="Copy message"
                               >
@@ -522,16 +529,3 @@ const LeadMessagesTab: React.FC<LeadMessagesTabProps> = ({ lead, onUpdate }) => 
                           </div>
                         )}
                       </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-export default LeadMessagesTab;
